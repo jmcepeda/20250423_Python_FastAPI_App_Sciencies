@@ -1,0 +1,60 @@
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+from typing import Optional
+from pydantic import BaseModel
+# from core.config import settings # Si usas un fichero de configuración
+# from ...core.config import settings
+from fastapi import Depends, FastAPI, HTTPException, APIRouter
+# from core.config import settings # Si usas un fichero de configuración
+from models.token import Token
+from models.user import User
+
+router = APIRouter()
+
+@router.post("/login", response_model=Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Credenciales incorrectas")
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.username}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+def authenticate_user(username: str, frontend_key: str) -> Optional[User]:
+    if frontend_key == settings.FRONTEND_APP_KEY:
+        return User(username=username)
+    return None
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+# Ejemplo de cómo podrías definir get_current_user aquí o en core/security.py
+bearer_scheme = OAuth2PasswordBearer(tokenUrl="/login") # Usa OAuth2PasswordBearer para /login
+
+async def get_current_user(token: str = Depends(bearer_scheme)):
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="No se pudieron validar las credenciales",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        # Aquí podrías buscar al usuario en tu base de datos si fuera necesario
+        return User(username=username)
+    except JWTError:
+        raise credentials_exception
+    return None

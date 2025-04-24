@@ -1,0 +1,19 @@
+fastapi
+typing-extensions  # FastAPI dependency
+uvicorn          # ASGI server for FastAPI (you'll likely use this)
+pydantic         # FastAPI dependency
+gemini-api
+pyenchant
+googletrans == 4.0.0rc1  # Especificar versión para evitar problemas
+deep-translator
+aiohttp
+gTTS
+google-generativeai
+python-jose
+typing
+datetime
+enchant
+gemini_api
+python-multipart
+sqlalchemy
+mysql-connector-python
