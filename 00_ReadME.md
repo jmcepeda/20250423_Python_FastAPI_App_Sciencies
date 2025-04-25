@@ -20,7 +20,7 @@ Este documento describe los pasos necesarios para configurar correctamente el en
     pip install -r setup/requirements.txt
     ```
 
-## 0. Lanzar la Aplicación
+## 0. Lanzar la Aplicación (Esta opción funciona mejor que la tradicional 'python main.py')
 
     ```
     uvicorn main:app --reload
