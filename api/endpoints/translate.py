@@ -14,24 +14,64 @@ from  utils.utils import (
 from .auth import get_current_user
 from models.user import User
 import os
-import enchant
+# import enchant
 import asyncio
 from utils.gemini_api import async_generate_improved_definition, async_generate_improved_translate
+
+import nltk
+from nltk.corpus import words
 
 router = APIRouter()
 age: Optional[int] = 15
 
-def es_palabra_espanol(word: str) -> bool:
-    diccionario_es = enchant.Dict("es")
-    return diccionario_es.check(word)
 
-def es_palabra_ingles(word: str) -> bool:
-    diccionario_en = enchant.Dict("en")
-    return diccionario_en.check(word)
+try:
+    nltk.data.find('corpora/words')
+except nltk.downloader.DownloadError:
+    nltk.download('words')
+
+english_words = set(words.words('en'))
+# There isn't a direct 'es' argument that guarantees a comprehensive Spanish list.
+# The default 'words' might contain some Spanish.
+# all_words = set(words.words()) # Load all words and check if present (less efficient)
+
+
+def es_palabra_ingles(word: str):
+    return word.lower() in english_words
+
+# def es_palabra_espanol(word:str):
+#     try:
+#         spanish_words_corpus = set(words.words('es'))
+#         return word.lower() in spanish_words_corpus
+#     except LookupError:
+#         print("Spanish words corpus not found. You might need to download it.")
+#         return False
+
+# print(f"'hello' is English: {es_palabra_ingles('hello')}")
+# print(f"'Hola' is Spanish: {es_palabra_espanol('Hola')}")
+#print(f"'blorf' is English: {es_palabra_ingles('blorf')}")
+# print(f"'zutano' is Spanish: {es_palabra_espanol('zutano')}")
+
+
+
+
+
+# def es_palabra_espanol(word: str) -> bool:
+#     diccionario_es = enchant.Dict("es")
+#     return diccionario_es.check(word)
+
+# def es_palabra_ingles(word: str) -> bool:
+#     diccionario_en = enchant.Dict("en")
+#     return diccionario_en.check(word)
+
+
+
+
+
 
 def validate_language(word: str, lang: str) -> bool:
     if lang == 'es':
-        return es_palabra_espanol(word)
+        return True
     elif lang == 'en':
         return es_palabra_ingles(word)
     return False
@@ -41,10 +81,14 @@ def validate_language(word: str, lang: str) -> bool:
 
 # Ruta de Prueba SIN Verificación de usuario
 @router.get("/translate")
+
+
 async def translate_api(
     word: str = Query(..., description="Palabra a traducir"),
     lang: str = Query(..., description="Idioma de la palabra ('es' o 'en')")
 ):
+    print("Empezando la traducción...")
+    
     if not lang in ['es', 'en']:
         raise HTTPException(
             status_code=400, detail="Las Palabras deben ser en alguno de estos dos idiomas: 'es' (Español) o 'en' (Inglés).")
@@ -61,7 +105,7 @@ async def translate_api(
     if not idioma_correcto:
         idioma = 'Español' if lang == 'es' else 'Inglés'
         raise HTTPException(
-            status_code=400, detail=f"La palabra introducida '{word}' no parece ser una palabra válida para el idioma '{lang}' ({idioma}).")
+            status_code=400, detail=f"La palabra introducida '{word}' no parece ser una palabra válida para el idioma '{lang}' ({idioma}). Recuerda que las palabras deben ser en inglés.")
 
     translated_word: str = ''
     spannish_word: str = ''
