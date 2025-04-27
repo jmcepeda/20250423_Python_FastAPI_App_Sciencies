@@ -1,17 +1,19 @@
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-# Define la URL de tu base de datos MariaDB
-DATABASE_URL = "mysql+mysqlconnector://jmcepeda:cintiatyron2015@192.168.50.150:3366/app_sciencies?charset=utf8mb4&collation=utf8mb4_unicode_ci" 
+# Define la URL de tu base de datos MariaDB (con asyncmy como driver)
+DATABASE_URL = "mysql+asyncmy://jmcepeda:cintiatyron2015@192.168.50.150:3366/app_sciencies?charset=utf8mb4"
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+engine = create_async_engine(DATABASE_URL)
+async_session_maker = sessionmaker(
+    autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
 Base = declarative_base()
 
-def get_db():
-    db = SessionLocal()
+
+async def get_db():
+    session = async_session_maker()
     try:
-        yield db
+        yield session
     finally:
-        db.close()
+        await session.close()

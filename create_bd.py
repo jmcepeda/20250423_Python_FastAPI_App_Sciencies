@@ -1,38 +1,64 @@
-from sqlalchemy import create_engine, inspect
-from database.database import Base, DATABASE_URL  # Importa la configuración de la base de datos
-from database.models.palabra import *
-from database.models.usuario import *
-from database.models.ejercicio import *
-from database.models.reto import *
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy import inspect
+from sqlalchemy.sql.schema import Table
+import asyncio
 
-engine = create_engine(DATABASE_URL)
-inspector = inspect(engine)
-tables = inspector.get_table_names()
+# Importa la configuración de la base de datos
+from database.database import Base, DATABASE_URL
 
-model_tables = [
-    Palabra.__tablename__,
-    DefinicionEs.__tablename__,
-    DefinicionEn.__tablename__,
-    TraduccionEs.__tablename__,
-    TraduccionEn.__tablename__,
-    Imagen.__tablename__,
-    PalabraImagen.__tablename__,
-    Audio.__tablename__,
-    PalabraAudio.__tablename__,
-    Curso.__tablename__,
-    Asignatura.__tablename__,
-    Usuario.__tablename__,
-    SesionUsuario.__tablename__,
-    ResultadoEjercicio.__tablename__,
-    Reto.__tablename__,
-    PalabraReto.__tablename__,
-    ResultadoReto.__tablename__,
-]
+# Importa tus modelos
+from database.models.word import Word, DefinitionsEs, DefinitionsEn, TranslationEs, TranslationEn, Imagen, Audio, Curso, Asignatura
+from database.models.usuario import Usuario, SesionUsuario
+from database.models.reto import Reto
 
-tables_to_create = [table for table in model_tables if table not in tables]
 
-if tables_to_create:
-    Base.metadata.create_all(bind=engine)
-    print(f"¡Se han creado las siguientes tablas: {', '.join(tables_to_create)}!")
-else:
-    print("Las tablas ya existen en la base de datos.")
+async def create_tables():
+    engine = create_async_engine(DATABASE_URL)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("¡Tablas creadas con Éxito. Una cosa Menos!")
+
+
+async def check_tables_exist():
+    engine = create_async_engine(DATABASE_URL)
+    async with engine.connect() as conn:
+        def get_tables(sync_conn):
+            inspector = inspect(sync_conn)
+            return inspector.get_table_names()
+
+        tables = await conn.run_sync(get_tables)
+
+    model_tables = [
+        Word.__tablename__,
+        DefinitionsEs.__tablename__,
+        DefinitionsEn.__tablename__,
+        TranslationEs.__tablename__,
+        TranslationEn.__tablename__,
+        Imagen.__tablename__,
+        # WordImagenes.__tablename__,
+        Audio.__tablename__,
+        # WordAudio.__tablename__,
+        Curso.__tablename__,
+        Asignatura.__tablename__,
+        Usuario.__tablename__,
+        SesionUsuario.__tablename__,
+        # ResultadoEjercicio.__tablename__,
+        Reto.__tablename__,
+        # WordReto.__tablename__,
+        # ResultadoReto.__tablename__,
+        # WordModification.__tablename__  # Asegúrate de incluir el nuevo modelo
+    ]
+
+    tables_to_create = [table for table in model_tables if table not in tables]
+
+    if tables_to_create:
+        await create_tables()
+    else:
+        print("Las tablas ya existen en la base de datos.")
+
+
+async def main():
+    await check_tables_exist()
+
+if __name__ == "__main__":
+    asyncio.run(main())

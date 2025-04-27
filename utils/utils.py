@@ -25,7 +25,7 @@ def translate_word_sync(word, source='en', target='es'):
     """Función síncrona para ser ejecutada en un hilo."""
     try:
         translator = DeepTranslatorSync(source=source, target=target)
-        translator.engine = 'google' 
+        translator.engine = 'google'
         translation = translator.translate(word)
         return translation
     except Exception as e:

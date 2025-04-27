@@ -5,7 +5,7 @@ Este documento describe los pasos necesarios para configurar correctamente el en
 ## 0000. Preparación Previa de dependecias con el script
 
     ```
-    ./setup_env.sh
+    setup/setup_env.sh
     ```
 
 ## 000. Activar Entorno Virtual con el script

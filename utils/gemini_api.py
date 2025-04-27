@@ -6,7 +6,9 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
 # model = genai.GenerativeModel('gemini-pro')
 # model = genai.GenerativeModel('models/gemini-1.5-pro-latest')
-model = genai.GenerativeModel('models/gemini-2.0-flash')
+# model = genai.GenerativeModel('models/gemini-2.0-flash')
+model = genai.GenerativeModel('models/gemini-2.0-flash-lite')
+# Gemini 2.0 Flash-Lite
 
 
 # async def async_generate_improved_definition(word_palabra, original_definition_definicion_original, target_language, age):
@@ -48,7 +50,7 @@ model = genai.GenerativeModel('models/gemini-2.0-flash')
 #     except Exception as e:
 #         print(f"Error al comunicarse con la API de Gemini: {e}")
 #         return None
-    
+
 async def async_generate_improved_definition(word_palabra, target_language, age):
     """
     Genera una definición adaptada usando la API de Gemini de forma asíncrona.
@@ -70,7 +72,7 @@ async def async_generate_improved_definition(word_palabra, target_language, age)
 
     try:
         print(f"API_Key: {GOOGLE_API_KEY}")
-        models = genai.list_models()
+        # models = genai.list_models()
         # print("Modelos disponibles:")
         # for available_model in models:
         #     print(f"  Nombre: {available_model.name}")
@@ -89,6 +91,7 @@ async def async_generate_improved_definition(word_palabra, target_language, age)
         print(f"Error al comunicarse con la API de Gemini: {e}")
         return None
 
+
 async def async_generate_improved_translate(word_palabra, target_language, age):
     """
     Genera la traducción adaptada usando la API de Gemini de forma asíncrona.
@@ -101,9 +104,9 @@ async def async_generate_improved_translate(word_palabra, target_language, age):
         str: La traducción mejorada o None si hay un error.
     """
     if target_language == 'es':
-        prompt = f"""Necesito que me des una traducción a español de la palabra {word_palabra} para una persona española de {age} años con un nivel medio/bajo de inglés para su edad. Necesito una traducción y no una definición. Necesito que en la respuesta solo venga la traducción"."""
+        prompt = f"""Necesito que me des una traducción a español de la palabra {word_palabra} para una persona española de {age} años con un nivel medio/bajo de inglés para su edad. Necesito una traducción y no una definición. Solo necesito que la traducción se incluya en la respuesta. No quiero que la respuesta incluya nada que haga referencia a la pregunta que te di. No quiero que incluyas frases como -Aquí está la respuesta- o -Esta es la respuesta para una persona de cierta edad-. Todo ese contexto no lo puede incluir en la respuesta. No puedes incluir frases como -¡Claro! Aquí está la definición- o -Bueno, aquí tienes una definición adecuada para un joven de 15 años con un inglés promedio-."""
     elif target_language == 'en':
-        prompt = f"""Please giveme a translation in english of the {word_palabra} for a Spanish person of {age} years old with an average level of English. I need a translation not a definition. I only need the translation in the response."""
+        prompt = f"""Please giveme a translation in english of the {word_palabra} for a Spanish person of {age} years old with an average level of English. I need a translation not a definition. I need only the translation to be included in the answer. I don't want anything in the answer that references the prompt I gave you. I don't want you to include anything like, -Here's the answer,- or -This is the answer for a person of a certain age.- All that context can't be included in the answer. You can not include phrases like, -Sure! Here's the definition.- or -Okay, here's a definition suitable for a 15-year-old with average English-"""
     else:
         return "Idioma objetivo no válido."
 

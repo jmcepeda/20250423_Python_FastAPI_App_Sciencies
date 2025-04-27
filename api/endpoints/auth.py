@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from typing import Optional
@@ -10,24 +10,37 @@ from fastapi import Depends, FastAPI, HTTPException, APIRouter
 # from core.config import settings # Si usas un fichero de configuración
 from models.token import Token
 from models.user import User
+from database.models.usuario import Usuario  # <--- IMPORTACIÓN CORRECTA
+
+from sqlalchemy.orm import Session
+from database.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from utils.schemas import WordCreateRequest
+from fastapi import Body
 
 router = APIRouter()
+
 
 @router.post("/login", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Credenciales incorrectas")
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
+
 def authenticate_user(username: str, frontend_key: str) -> Optional[User]:
     if frontend_key == settings.FRONTEND_APP_KEY:
         return User(username=username)
     return None
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -36,11 +49,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    encoded_jwt = jwt.encode(
+        to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
+
 # Ejemplo de cómo podrías definir get_current_user aquí o en core/security.py
-bearer_scheme = OAuth2PasswordBearer(tokenUrl="/login") # Usa OAuth2PasswordBearer para /login
+# Usa OAuth2PasswordBearer para /login
+bearer_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+
 
 async def get_current_user(token: str = Depends(bearer_scheme)):
     credentials_exception = HTTPException(
@@ -49,7 +66,8 @@ async def get_current_user(token: str = Depends(bearer_scheme)):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY,
+                             algorithms=[settings.ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
@@ -58,3 +76,42 @@ async def get_current_user(token: str = Depends(bearer_scheme)):
     except JWTError:
         raise credentials_exception
     return None
+
+
+async def get_current_user_test(
+    # credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    # username: str = None  # <--- Este parámetro se llenará desde el "username" del body
+    # <-- así recibes el body completo
+    word_data: WordCreateRequest = Body(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Función simplificada para obtener o crear un usuario basado en el username
+    enviado en el cuerpo de la petición.
+    """
+
+    username = word_data.username  # <-- extraes el username del objeto
+    print(
+        f"Username recibido en la función -get_current_user_test-: {username}")
+
+    response_data = {
+        "username": username,
+        "usuario_existente_db": False  # Nuevo campo con valor predeterminado False
+    }
+
+    if username is None:
+        raise HTTPException(
+            status_code=400, detail="Se debe proporcionar un 'username' en el cuerpo de la petición.")
+
+    # user = await db.query(User).filter(User.username == username).first()
+    # user = await db.execute(select(User).where(User.username == username))
+
+     # Corrección aquí
+    result = await db.execute(select(Usuario).where(Usuario.username == username))
+    user = result.scalar_one_or_none()
+
+    if user:
+        # Si el usuario existe, cambiar a True
+        response_data["usuario_existente_db"] = True
+
+    return response_data

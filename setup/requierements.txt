@@ -17,3 +17,6 @@ gemini_api
 python-multipart
 sqlalchemy
 mysql-connector-python
+asyncmy
+greenlet
+PyDictionary

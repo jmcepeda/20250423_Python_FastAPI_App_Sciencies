@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, Boolean, Enum, Float, ForeignKey, String
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, Boolean, Enum, Float, String
 from sqlalchemy.orm import relationship
 from database.database import Base
 from datetime import datetime
 import enum
+
 
 class TipoEjercicio(enum.Enum):
     UNIR_PALABRAS = "unir_palabras"
@@ -11,17 +12,17 @@ class TipoEjercicio(enum.Enum):
     SELECCIONAR_COLUMNAS = "seleccionar_columnas"
 
 
-class ResultadoEjercicio(Base):
-    __tablename__ = "resultados_ejercicio"
+# class ResultadoEjercicio(Base):
+#     __tablename__ = "resultados_ejercicio"
 
-    id = Column(Integer, primary_key=True, index=True)
-    usuario_id = Column(Integer, ForeignKey("usuarios.id"))
-    palabra_id = Column(Integer, ForeignKey("palabras.id"))
-    fecha = Column(DateTime, default=datetime.utcnow)
-    tipo_ejercicio = Column(Enum(TipoEjercicio), nullable=False)
-    acierto = Column(Boolean, nullable=False)
-    tiempo_respuesta = Column(Float)  # Tiempo en segundos
-    tipo_fallo = Column(String(255))  # Detalles del fallo (opcional)
+#     id = Column(Integer, primary_key=True, index=True)
+#     usuario_id = Column(Integer, ForeignKey("usuario.id"))
+#     word_id = Column(Integer, ForeignKey("words.id"))
+#     fecha = Column(DateTime, default=datetime.utcnow)
+#     tipo_ejercicio = Column(Enum(TipoEjercicio), nullable=False)
+#     acierto = Column(Boolean, nullable=False)
+#     tiempo_respuesta = Column(Float)  # Tiempo en segundos
+#     tipo_fallo = Column(String(255))  # Detalles del fallo (opcional)
 
-    usuario = relationship("Usuario", back_populates="resultados")
-    palabra = relationship("Palabra", back_populates="resultados")
+#     usuario = relationship("Usuario", back_populates="resultados")
+#     palabra = relationship("Word", back_populates="resultados")
