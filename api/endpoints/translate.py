@@ -322,18 +322,20 @@ async def add_new_word(
     # print(
     # f"Token recibido (no validado): {credentials.credentials if (credentials := Depends(bearer_scheme)) else None}")
     print(current_user)
+    # print(
+    # f"Usuario (Username: {current_user['username']} Existente en DB: {current_user['usuario_existente_db']})")
     print(
-        f"Usuario (Username: {current_user['username']} Existente en DB: {current_user['usuario_existente_db']})")
+        f"Usuario (Username: {current_user.username} Existente en DB: {current_user.usuario_existente_db})")
 
     # word_existente = existe_word(db, word_es=word_es, word_en=word_en)
 
     # Fíjate también en await
-    word_existente = await existe_word(db, word_data["word_en"], word_data["lang"])
+    word_existente = await existe_word(db, word_data.word_en, word_data.lang)
 
-    if word_existente.palabra_existente_db:
+    if word_existente['palabra_existente_db']:
         raise HTTPException(
             status_code=400, detail="Esta palabra ya existe en la base de datos.")
 
-    new_word = guardar_word_db(db, word_es=word_es.lower(
-    ), word_en=word_en.lower(), created_by=current_user.id)
+    new_word = guardar_word_db(db, word_es=word_data.word_en.lower(
+    ), word_en=word_data.word_en.lower(), created_by=current_user.wordpress_id)
     return JSONResponse(content=new_word)

@@ -18,6 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from utils.schemas import WordCreateRequest
+from utils.schemas import CurrentUserResponse  # importa tu modelo
+
 from fastapi import Body
 
 router = APIRouter()
@@ -94,10 +96,22 @@ async def get_current_user_test(
     print(
         f"Username recibido en la función -get_current_user_test-: {username}")
 
-    response_data = {
-        "username": username,
-        "usuario_existente_db": False  # Nuevo campo con valor predeterminado False
-    }
+    response_data = CurrentUserResponse(
+        username=username,
+        firstname=word_data.firstname,
+        lastname=word_data.lastname,
+        email=word_data.email,
+        wordpress_id=word_data.wordpress_id,
+        usuario_existente_db=False
+    )
+    # response_data = {
+    #     "username": username,
+    #     "firstname": word_data.firstname,
+    #     "lastname": word_data.lastname,
+    #     "email": word_data.email,
+    #     "wordpress_id": word_data.wordpress_id,
+    #     "usuario_existente_db": False  # Nuevo campo con valor predeterminado False
+    # }
 
     if username is None:
         raise HTTPException(
