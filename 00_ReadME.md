@@ -2,22 +2,28 @@
 
 Este documento describe los pasos necesarios para configurar correctamente el entorno virtual de este proyecto, instalar las dependencias y solucionar los problemas relacionados con la biblioteca `enchant` y sus diccionarios para la verificación de palabras en español.
 
-## 0000. Preparación Previa de dependecias con el script
+## 00000. Preparación Previa de dependecias con el script
 
     ```
     setup/setup_env.sh
     ```
 
-## 000. Activar Entorno Virtual con el script
+## 0000. Activar Entorno Virtual con el script
 
     ```
     conda activate new_env
     ```
 
-## 00. Instalar dependencias en el entorno virtual
+## 000. Instalar dependencias en el entorno virtual
 
     ```
     pip install -r setup/requirements.txt
+    ```
+
+## 00. Instalar vocabulario, definiciones, ejemplos para nltk
+
+    ```
+    python setup/descargar_wordnet.py
     ```
 
 ## 0. Lanzar la Aplicación (Esta opción funciona mejor que la tradicional 'python main.py')

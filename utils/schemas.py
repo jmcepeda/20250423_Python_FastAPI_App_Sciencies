@@ -3,5 +3,9 @@ from pydantic import BaseModel
 
 class WordCreateRequest(BaseModel):
     word_en: str
-    word_es: str
+    lang: str
     username: str
+    firstname: str∫
+    lastname: str
+    email: str
+    wordpress_id: int

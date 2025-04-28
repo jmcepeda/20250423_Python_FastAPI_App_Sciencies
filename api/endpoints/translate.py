@@ -328,11 +328,11 @@ async def add_new_word(
     # word_existente = existe_word(db, word_es=word_es, word_en=word_en)
 
     # Fíjate también en await
-    word_existente = await existe_word(db, word_data.word_en, "en")
+    word_existente = await existe_word(db, word_data["word_en"], word_data["lang"])
 
-    if word_existente:
+    if word_existente.palabra_existente_db:
         raise HTTPException(
-            status_code=400, detail="Esta palabra ya existe en lword_existente_dba base de datos.")
+            status_code=400, detail="Esta palabra ya existe en la base de datos.")
 
     new_word = guardar_word_db(db, word_es=word_es.lower(
     ), word_en=word_en.lower(), created_by=current_user.id)

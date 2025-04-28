@@ -12,9 +12,9 @@ class Usuario(Base):
                           nullable=False)  # ID del usuario en WordPress
     fecha_registro = Column(DateTime, default=datetime.utcnow)
     username = Column(String(255), unique=True, nullable=False)
-    name = Column(String(255), nullable=False)
-    lastname = Column(String(255), nullable=False)
+    # name = Column(String(255), nullable=False)
     firstname = Column(String(255), nullable=False)
+    lastname = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False)
 
     sesiones = relationship("SesionUsuario", back_populates="usuario")
