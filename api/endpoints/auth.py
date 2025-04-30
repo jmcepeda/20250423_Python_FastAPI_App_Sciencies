@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from utils.schemas import WordCreateRequest
-from utils.schemas import CurrentUserResponse  # importa tu modelo
+from utils.schemas import CurrentUserResponse, CreateUser  # importa tu modelo
 
 from fastapi import Body
 
@@ -97,7 +97,7 @@ async def get_current_user_test(
         f"Username recibido en la función -get_current_user_test-: {username}")
 
     response_data = CurrentUserResponse(
-        username=username,
+        username=word_data.username,
         firstname=word_data.firstname,
         lastname=word_data.lastname,
         email=word_data.email,
@@ -126,6 +126,55 @@ async def get_current_user_test(
 
     if user:
         # Si el usuario existe, cambiar a True
-        response_data["usuario_existente_db"] = True
+
+        response_data.usuario_existente_db = True
+        response_data.id = user.id
+
+        print(
+            f"El usuario {username} SI EXISTE en la base de datos. Estos son los datos del usuario existente:")
+        print(user)
+    else:
+        # Si el usuario no existe, crear uno nuevo
+        print(
+            f"El usuario {username} NO Existe en la base de datos. Creando un nuevo usuario. Estos son los datos que se pasan a la función create_new_user_test:")
+        # print(response_data)
+
+        response_data = await create_new_user_test(db, response_data)
+        # response_data["usuario_existente_db"] = True
+        response_data.usuario_existente_db = True
+        # nuevo_usuario = Usuario(
+        #     username=word_data.username,
+        #     firstname=word_data.firstname,
+        #     lastname=word_data.lastname,
+        #     email=word_data.email,
+        #     wordpress_id=word_data.wordpress_id
+        # )
+        # db.add(nuevo_usuario)
+        # await db.commit()
+        # await db.refresh(nuevo_usuario)
 
     return response_data
+
+
+async def create_new_user_test(db: AsyncSession, user_data: CreateUser, ):
+    """
+    Función para crear un usuario basado en el username
+    enviado en el cuerpo de la petición.
+    """
+
+    username = user_data.username  # <-- extraes el username del objeto
+    print(
+        f"Username recibido en la función -create_new_user_test-: {username}")
+
+    """Crea un nuevo usuario en la base de datos."""
+    nuevo_usuario = Usuario(
+        username=user_data.username,
+        firstname=user_data.firstname,
+        lastname=user_data.lastname,
+        email=user_data.email,
+        wordpress_id=user_data.wordpress_id
+    )
+    db.add(nuevo_usuario)
+    await db.commit()
+    await db.refresh(nuevo_usuario)
+    return nuevo_usuario

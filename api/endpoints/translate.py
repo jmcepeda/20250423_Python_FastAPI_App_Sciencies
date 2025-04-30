@@ -1,3 +1,10 @@
+from utils.schemas import WordCreateRequest, WordResponse
+from database.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
+from nltk.corpus import wordnet
+from nltk.corpus import words
+import nltk
 from fastapi import APIRouter, Query, HTTPException, Depends
 from fastapi.responses import JSONResponse, FileResponse
 from typing import Optional, List
@@ -18,17 +25,12 @@ import os
 # import enchant
 import asyncio
 from utils.gemini_api import async_generate_improved_definition, async_generate_improved_translate
+from utils.calculo_curso import get_curso_and_asignatura_id
 
-import nltk
-from nltk.corpus import words
+from datetime import datetime
+
 # from PyDictionary import PyDictionary
-from nltk.corpus import wordnet
 
-from sqlalchemy.orm import Session
-from sqlalchemy.ext.asyncio import AsyncSession
-from database.database import get_db
-
-from utils.schemas import WordCreateRequest
 
 router = APIRouter()
 age: Optional[int] = 15
@@ -327,7 +329,31 @@ async def add_new_word(
     print(
         f"Usuario (Username: {current_user.username} Existente en DB: {current_user.usuario_existente_db})")
 
+    # formato = "%Y-%m-%d"  # Código de formato para YYYY-MM-DD
+    date = word_data.birthdate
+    try:
+        # .date() si solo quieres la fecha
+        # objeto_fecha = datetime.strptime(date_str, formato).date()
+        # year_nacimiento = objeto_fecha.year
+        year_nacimiento = date.year
+        # print(f"Fecha como objeto date: {objeto_fecha}")
+        print(f"El año es: {year_nacimiento}")  # Salida: El año es: 2024
+    except ValueError:
+        print("El formato de la fecha no coincide.")
     # word_existente = existe_word(db, word_es=word_es, word_en=word_en)
+    # {curso_id, asignatura_id} = word_data.curso_id, word_data.asignatura_id
+    # {curso_id, asignatura_id} = get_curso_and_asignatura_id(year_nacimiento, 0, "Sciencies", db)
+    # response_curso_asignatura = await get_curso_and_asignatura_id(
+    #     year_nacimiento, 0, "Sciencies", db)
+    response_curso_asignatura = await get_curso_and_asignatura_id(
+        year_nacimiento, 0, word_data.asignatura, db)
+
+    # curso_id = response_curso_asignatura.get("curso_id")
+    # curso_id = response_curso_asignatura["curso_id"]
+    # asignatura_id = response_curso_asignatura.get("asignatura_id")
+
+    curso_id = response_curso_asignatura["curso_id"]
+    asignatura_id = response_curso_asignatura["asignatura_id"]
 
     # Fíjate también en await
     word_existente = await existe_word(db, word_data.word_en, word_data.lang)
@@ -336,6 +362,14 @@ async def add_new_word(
         raise HTTPException(
             status_code=400, detail="Esta palabra ya existe en la base de datos.")
 
-    new_word = guardar_word_db(db, word_es=word_data.word_en.lower(
-    ), word_en=word_data.word_en.lower(), created_by=current_user.wordpress_id)
-    return JSONResponse(content=new_word)
+    print("Desde Función POST API Translate: Curso ID:", curso_id)
+    print("Desde Función POST API Translate: Asignatura ID:", asignatura_id)
+    # new_word = guardar_word_db(db, created_by=current_user.id, word_es=word_data.word_en.lower(
+    # ), word_en=word_data.word_en.lower(), curso_id=word_data.curso_id, asignatura_id=word_data.asignatura_id)
+    new_word_sqlalchemy_obj = await guardar_word_db(db, created_by=current_user.id, word_es=word_data.word_es.lower(
+    ), word_en=word_data.word_en.lower(), curso_id=curso_id, asignatura_id=asignatura_id)
+    # print(new_word_sqlalchemy_obj)
+    response_data = WordResponse.model_validate(new_word_sqlalchemy_obj)
+    print(response_data)
+    # return JSONResponse(content=new_word)
+    return response_data

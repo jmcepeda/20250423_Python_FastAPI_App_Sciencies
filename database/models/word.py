@@ -30,6 +30,20 @@ class Word(Base):
     # resultados = relationship("ResultadoEjercicio", back_populates="words")
     # words_reto = relationship("WordReto", back_populates="words")
 
+    # --- MÉTODO RECOMENDADO ---
+    def __repr__(self):
+        return (f"<Word(id={self.id}, word_en='{self.word_en}', word_es='{self.word_es}', "
+                f"curso_id={self.curso_id}, asignatura_id={self.asignatura_id}, "
+                f"created_by={self.created_by})>"
+                f"created_at={self.created_at})>"
+                # f"definitions_en={self.definitions_en}, "
+                # f"definitions_es={self.definitions_es}, "
+                # f"translations_en={self.translations_en}, "
+                # f"translations_es={self.translations_es}, "
+                f"curso={self.curso}, "
+                f"asignatura={self.asignatura})>")
+    # --- MÉTODO RECOMENDADO ---
+
 
 class DefinitionsEs(Base):
     __tablename__ = "definitions_es"

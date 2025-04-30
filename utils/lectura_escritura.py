@@ -7,6 +7,7 @@ from database.database import get_db
 # from database.models.word import Word, DefinitionsEs, DefinitionsEn, Imagen, Audio, Curso, Asignatura, WordModification
 from database.models.word import Word, DefinitionsEs, DefinitionsEn, Imagen, Audio, Curso, Asignatura
 from typing import List, Optional
+from fastapi import HTTPException
 
 # --- Funciones auxiliares de verificación ---
 
@@ -85,26 +86,43 @@ async def existe_word(db: AsyncSession, word: str, lang: str) -> dict:
 #     # return db.query(Word).filter((Word.word_es == word_es) | (Word.word_en == word_en)).first()
 
 
-def guardar_word_db(db: Session, word_es: str, word_en: str, curso_id: Optional[int] = None, asignatura_id: Optional[int] = None) -> Word:
+async def guardar_word_db(db: AsyncSession, created_by: int, word_en: str, word_es: str, curso_id: Optional[int] = None, asignatura_id: Optional[int] = None) -> Word:
     """Guarda una nueva palabra en la base de datos."""
 
     # Ponemos en minúscula la palabra para evitar problemas de comparación y evitar duplicados
-    word_es = word_es.lower()
-    word_en = word_en.lower()
+    word_es_lower = word_es.lower()
+    word_en_lower = word_en.lower()
 
     new_word = Word(
-        word_es=word_es,
-        word_en=word_en,
+        created_by=created_by,
+        word_es=word_es_lower,
+        word_en=word_en_lower,
         curso_id=curso_id,
         asignatura_id=asignatura_id
     )
     db.add(new_word)
-    db.commit()
-    db.refresh(new_word)
-    return new_word
+    try:
+        # --- AÑADIR await ---
+        await db.commit()
+        print(f"Commit realizado para: {word_en_lower}")
+        # --- AÑADIR await ---
+        await db.refresh(new_word)
+        print(f"Objeto refrescado, ID obtenido: {new_word.id}")
+        return new_word
+    except Exception as e:
+        # --- AÑADIR await ---
+        await db.rollback()
+        print(f"Error al guardar la palabra '{word_en_lower}' en la BD: {e}")
+        # Considera relanzar el error de forma adecuada para FastAPI
+
+        # print(new_word_sqlalchemy_obj) # Esto podría estar intentando cargar relaciones lazy-loaded síncronamente
+
+        # return JSONResponse(status_code=201, content={"message": f"Palabra '{word_es}' añadida exitosamente con ID: {new_word_sqlalchemy_obj.id}", "word_id": new_word_sqlalchemy_obj.id})
+        raise HTTPException(
+            status_code=500, detail=f"Error al guardar en base de datos: {e}") from e
 
 
-def guardar_definiciones_db(db: Session, word_id: int, definitions_es: List[str], definitions_en: List[str]):
+async def guardar_definiciones_db(db: AsyncSession, word_id: int, definitions_es: List[str], definitions_en: List[str]):
     """Guarda las definiciones en español e inglés para una palabra."""
     for def_es in definitions_es:
         new_definition_es = DefinitionsEs(word_id=word_id, definicion=def_es)
@@ -115,7 +133,7 @@ def guardar_definiciones_db(db: Session, word_id: int, definitions_es: List[str]
     db.commit()
 
 
-def guardar_imagenes_db(db: Session, word_id: int, url_images: List[str]):
+def guardar_imagenes_db(db: AsyncSession, word_id: int, url_images: List[str]):
     """Guarda las URLs de las imágenes y las asocia a la palabra."""
     for url in url_images:
         imagen_existente = db.query(Imagen).filter(
@@ -140,7 +158,7 @@ def guardar_imagenes_db(db: Session, word_id: int, url_images: List[str]):
     db.commit()
 
 
-def guardar_audio_db(db: Session, word_id: int, url_audio: str):
+def guardar_audio_db(db: AsyncSession, word_id: int, url_audio: str):
     """Guarda la URL del audio y lo asocia a la palabra."""
     audio_existente = db.query(Audio).filter(
         Audio.ruta_archivo == url_audio).first()
@@ -164,7 +182,7 @@ def guardar_audio_db(db: Session, word_id: int, url_audio: str):
 
 
 def gestionar_guardado_word(
-    db: Session,
+    db: AsyncSession,
     word_es: str,
     word_en: str,
     definitions_es: List[str],

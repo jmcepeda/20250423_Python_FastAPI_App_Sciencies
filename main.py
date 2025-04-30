@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
+from fastapi.routing import APIRoute
+from fastapi.staticfiles import StaticFiles
 # from api import auth_router, translate_router
 from api.endpoints.auth import router as auth_router
 from api.endpoints.translate import router as translate_router
@@ -23,7 +25,10 @@ from database.models.reto import Reto
 # from api.endpoints import auth_router, translate_router
 # from api import auth_router, translate_router
 
+# app = FastAPI()
+
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(auth_router)
 app.include_router(translate_router)
