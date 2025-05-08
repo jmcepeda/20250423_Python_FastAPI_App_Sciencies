@@ -108,6 +108,7 @@ async def guardar_word_db(db: AsyncSession, created_by: int, word_en: str, word_
     """Guarda una nueva palabra en la base de datos."""
 
     # Ponemos en minúscula la palabra para evitar problemas de comparación y evitar duplicados
+    print("Guardando la palabra en la base de datos... Desde la función guardar_word_db")
     word_es_lower = word_es.lower()
     word_en_lower = word_en.lower()
 
@@ -117,7 +118,7 @@ async def guardar_word_db(db: AsyncSession, created_by: int, word_en: str, word_
         word_en=word_en_lower,
         curso_id=curso_id,
         asignatura_id=asignatura_id,
-        campo_temporal=True
+        campo_temporal=temporal
     )
     db.add(new_word)
     try:

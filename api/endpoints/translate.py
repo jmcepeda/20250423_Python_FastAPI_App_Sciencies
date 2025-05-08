@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from nltk.corpus import wordnet
 from nltk.corpus import words
 import nltk
+from nltk.corpus import wordnet
 from fastapi import APIRouter, Query, HTTPException, Depends
 from fastapi.responses import JSONResponse, FileResponse
 from typing import Optional, List
@@ -24,7 +25,7 @@ from utils.lectura_escritura import existe_word, guardar_word_db
 import os
 # import enchant
 import asyncio
-from utils.gemini_api import async_generate_improved_definition, async_generate_improved_translate
+from utils.gemini_api import async_generate_improved_definition, async_generate_improved_translate, async_generate_frase_ejemplo
 from utils.calculo_curso import get_curso_and_asignatura_id
 
 from datetime import datetime
@@ -36,10 +37,20 @@ router = APIRouter()
 age: Optional[int] = 15
 
 
+# Descarga de recursos NLTK
 try:
     nltk.data.find('corpora/words')
-except nltk.downloader.DownloadError:
+    print("Recurso NLTK 'corpora/words' encontrado.")
+except LookupError:  # CAMBIO AQUÍ: de nltk.downloader.DownloadError a LookupError
+    print("Recurso NLTK 'corpora/words' no encontrado. Intentando descargar...")
     nltk.download('words')
+
+try:
+    nltk.data.find('corpora/omw-1.4')  # Open Multilingual Wordnet
+    print("Recurso NLTK 'corpora/omw-1.4' encontrado.")
+except LookupError:  # CAMBIO AQUÍ: de nltk.downloader.DownloadError a LookupError
+    print("Recurso NLTK 'corpora/omw-1.4' no encontrado. Intentando descargar...")
+    nltk.download('omw-1.4')
 
 english_words = set(words.words('en'))
 # There isn't a direct 'es' argument that guarantees a comprehensive Spanish list.
@@ -86,16 +97,20 @@ def validate_language(word: str, lang: str) -> bool:
 # Ruta de Prueba SIN Verificación de usuario
 
 
-@router.get("/translate")
+@router.get("/translate", dependencies=[Depends(get_current_user_test)])
 async def translate_api(
-    word: str = Query(..., description="Palabra a traducir"),
-    lang: str = Query(..., description="Idioma de la palabra ('es' o 'en')"),
-    db: AsyncSession = Depends(get_db)
+    word_data: WordCreateRequest,
+    # word: str = Query(..., description="Palabra a traducir"),
+    # lang: str = Query(..., description="Idioma de la palabra ('es' o 'en')"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(
+        get_current_user_test)
 ):
     """
     Traduce una palabra y devuelve su información, verificando primero si existe en la base de datos.
     """
-
+    word = word_data.word_en.lower()
+    lang = word_data.lang.lower()
     if not lang in ['es', 'en']:
         raise HTTPException(
             status_code=400, detail="Las Palabras deben ser en alguno de estos dos idiomas: 'es' (Español) o 'en' (Inglés).")
@@ -170,12 +185,12 @@ async def translate_api(
         if (lang == 'es' and idioma_correcto) or (lang == 'en' and not idioma_correcto):
             translated_word = await async_translate_word(word, source='es', target='en')
             pronunciation_lang = 'es'
-            spanish_word = word
+            spanish_word = word.lower()
             english_improved_translated = await async_generate_improved_translate(word, "en", age)
             # english_word = translated_word
-            english_word = english_improved_translated
+            english_word = english_improved_translated.lower()
             translated_word_arr = [
-                english_improved_translated, translated_word]
+                english_improved_translated.lower(), translated_word.lower()]
             print("Palabra Traducida:", translated_word)
             print("Palabra Traducida Mejorada:", english_word)
 
@@ -184,10 +199,10 @@ async def translate_api(
             translated_word = await async_translate_word(word, source='en', target='es')
             pronunciation_lang = 'en'
             spanish_improved_translated = await async_generate_improved_translate(word, "es", age)
-            spanish_word = spanish_improved_translated
-            english_word = word
+            spanish_word = spanish_improved_translated.lower()
+            english_word = word.lower()
             translated_word_arr = [
-                spanish_improved_translated, translated_word]
+                spanish_improved_translated.lower(), translated_word.lower()]
             print("Palabra Traducida:", translated_word)
             print("Palabra Traducida Mejorada:", spanish_improved_translated)
 
@@ -249,35 +264,135 @@ async def translate_api(
         # spanish_definitions = await async_translate_definitions(
         #     english_definitions, target='es') if english_definitions else []
 
-    spanish_improved_definitions: list[str] = []
-    if spanish_definitions:
-        tasks = [async_generate_improved_definition(
-            spanish_word, "es", age) for definition in spanish_definitions]
-        spanish_improved_definitions = await asyncio.gather(*tasks)
+        spanish_improved_definitions: list[str] = []
+        if spanish_definitions:
+            tasks = [async_generate_improved_definition(
+                spanish_word, "es", age) for definition in spanish_definitions]
+            spanish_improved_definitions = await asyncio.gather(*tasks)
 
-    print("Definiciones originales en español:", spanish_definitions)
-    print("Definiciones mejoradas:", spanish_improved_definitions)
-    spanish_definitions_def = spanish_improved_definitions+spanish_definitions
-    print("Definiciones totales en español:", spanish_definitions)
+        print("Definiciones originales en español:", spanish_definitions)
+        print("Definiciones mejoradas:", spanish_improved_definitions)
+        spanish_definitions_def = spanish_improved_definitions+spanish_definitions
+        print("Definiciones totales en español:", spanish_definitions)
 
-    english_improved_definitions: list[str] = []
-    if english_definitions:
-        tasks = [async_generate_improved_definition(
-            english_word, "en", age) for definition in english_definitions]
-        english_improved_definitions = await asyncio.gather(*tasks)
+        english_improved_definitions: list[str] = []
+        if english_definitions:
+            tasks = [async_generate_improved_definition(
+                english_word, "en", age) for definition in english_definitions]
+            english_improved_definitions = await asyncio.gather(*tasks)
 
-    print("Definiciones originales en ingles:", english_definitions)
-    print("Definiciones mejoradas:", english_improved_definitions)
-    english_definitions_def = english_improved_definitions+english_definitions
-    print("Definiciones totales en ingles:", english_definitions)
+        print("Definiciones originales en ingles:", english_definitions)
+        print("Definiciones mejoradas:", english_improved_definitions)
+        english_definitions_def = english_improved_definitions+english_definitions
+        print("Definiciones totales en ingles:", english_definitions)
 
-    # images = await async_get_images_unsplash(word if lang == 'en' else translated_word)
-    images = await async_get_images_unsplash(spanish_word + " - " + english_word)
+        # images = await async_get_images_unsplash(word if lang == 'en' else translated_word)
+        try:
+            images = await async_get_images_unsplash(spanish_word + " - " + english_word)
+        except Exception as e:
+            print("Error al obtener imágenes de Unsplash:", e)
+            raise HTTPException(
+                status_code=500, detail="Error al obtener imágenes de Unsplash."
+            ) from e
 
-    # Archivo de Pronunciación
-    pronunciation_file = await async_get_pronunciation(english_word, lang='en')
-    pronunciation_url = f'/00_audios/temporales/{os.path.basename(pronunciation_file)}' if pronunciation_file and os.path.exists(
-        pronunciation_file) else None
+        # Archivo de Pronunciación
+        pronunciation_file = await async_get_pronunciation(english_word, lang='en')
+        pronunciation_url = f'/00_audios/temporales/{os.path.basename(pronunciation_file)}' if pronunciation_file and os.path.exists(
+            pronunciation_file) else None
+
+        # Vamos a definir una lista con frases de ejemplo en inglés las que se usa la palabra
+        try:
+            sentence_example = await async_generate_frase_ejemplo(
+                english_word, "en", age)
+        except Exception as e:
+            print("Error al generar la frase de ejemplo:", e)
+            raise HTTPException(
+                status_code=500, detail="Error al generar la frase de ejemplo."
+            ) from e
+
+        # sentences_example_english = set()  # 1. Se inicializa un conjunto vacío
+
+        # # 2. Se itera sobre todos los significados (synsets) de la 'palabra'
+        # for synset in wordnet.synsets(english_word, lang='eng'):
+        #     # 3. Para cada significado, se obtienen sus frases de ejemplo
+        #     for ejemplo in synset.examples():
+        #         # 4. Cada frase de ejemplo se añade al conjunto
+        #         sentences_example_english.add(ejemplo)
+
+        # # 5. Se devuelve el conjunto convertido a lista
+        # list_sentences_example_english = list(sentences_example_english)
+
+     # Almacenamos la palabra en la base de datos
+        print(
+            f"Usuario (Username: {current_user.username} Existente en DB: {current_user.usuario_existente_db})")
+
+    # formato = "%Y-%m-%d"  # Código de formato para YYYY-MM-DD
+        date = word_data.birthdate
+        try:
+            # .date() si solo quieres la fecha
+            # objeto_fecha = datetime.strptime(date_str, formato).date()
+            # year_nacimiento = objeto_fecha.year
+            year_nacimiento = date.year
+            # print(f"Fecha como objeto date: {objeto_fecha}")
+            print(f"El año es: {year_nacimiento}")  # Salida: El año es: 2024
+        except ValueError:
+            print("El formato de la fecha no coincide.")
+        # word_existente = existe_word(db, word_es=word_es, word_en=word_en)
+        # {curso_id, asignatura_id} = word_data.curso_id, word_data.asignatura_id
+        # {curso_id, asignatura_id} = get_curso_and_asignatura_id(year_nacimiento, 0, "Sciencies", db)
+        # response_curso_asignatura = await get_curso_and_asignatura_id(
+        #     year_nacimiento, 0, "Sciencies", db)
+        try:
+            response_curso_asignatura = await get_curso_and_asignatura_id(
+                year_nacimiento, 0, word_data.asignatura, db)
+        except Exception as e:
+            print("Error al obtener el curso y asignatura:", e)
+            raise HTTPException(
+                status_code=500, detail="Error al obtener el curso y asignatura."
+            ) from e
+        # curso_id = response_curso_asignatura.get("curso_id")
+        # curso_id = response_curso_asignatura["curso_id"]
+        # asignatura_id = response_curso_asignatura.get("asignatura_id")
+
+        curso_id = response_curso_asignatura["curso_id"]
+        asignatura_id = response_curso_asignatura["asignatura_id"]
+
+        # Fíjate también en await
+        print("Desde Función POST API Word: Vamos a comprobar si la palabra ya existe en la base de datos.")
+        try:
+            word_existente = await existe_word(db, word_data.word_en, word_data.lang)
+        except Exception as e:
+            print("Error al comprobar si la palabra existe en la base de datos:", e)
+            raise HTTPException(
+                status_code=500, detail="Error al comprobar si la palabra existe en la base de datos."
+            ) from e
+
+        if word_existente['palabra_existente_db']:
+            raise HTTPException(
+                status_code=400, detail="Esta palabra ya existe en la base de datos. Que no te enteras contreras.")
+
+        print("Desde Función POST API Translate: Curso ID:", curso_id)
+        print("Desde Función POST API Translate: Asignatura ID:", asignatura_id)
+        # new_word = guardar_word_db(db, created_by=current_user.id, word_es=word_data.word_en.lower(
+        # ), word_en=word_data.word_en.lower(), curso_id=word_data.curso_id, asignatura_id=word_data.asignatura_id)
+        try:
+            # new_word_sqlalchemy_obj = await guardar_word_db(db, created_by=current_user.id, word_es=word_data.word_es.lower(
+            # ), word_en=word_data.word_en.lower(), curso_id=curso_id, asignatura_id=asignatura_id, temporal=False)
+            new_word_sqlalchemy_obj = await guardar_word_db(db, created_by=current_user.id, word_es=spanish_word.lower(
+            ), word_en=english_word.lower(), curso_id=curso_id, asignatura_id=asignatura_id, temporal=False)
+        except Exception as e:
+            print("Error al guardar la palabra en la base de datos:", e)
+            raise HTTPException(
+                status_code=500, detail="Error al guardar la palabra en la base de datos."
+            ) from e
+        # Ahora hay que guardar las definiciones y traducciones en la base de datos
+
+        # También hay que guardar las imagenes en la base de datos
+
+        # Por Último hay que guardar el audio en la base de datos
+
+    # print(new_word_sqlalchemy_obj)
+    response_data = WordResponse.model_validate(new_word_sqlalchemy_obj)
 
     return JSONResponse(content={
         'original_word': word,
@@ -293,9 +408,20 @@ async def translate_api(
             'en': english_improved_definitions,
             'es': spanish_improved_definitions,
         },
+        'sentences_example_english': sentence_example,
         'pronunciation_url': pronunciation_url,
         'image_urls': images,
-        'palabra_existente_db': True
+        'word_existente_db': False,
+        'word_insertada_db': True,
+        'usuario_existente_db': current_user.usuario_existente_db,
+        'user_id': current_user.id,
+        'user_username': current_user.username,
+        'user_firstname': current_user.firstname,
+        'user_lastname': current_user.lastname,
+        'user_email': current_user.email,
+        'user_wordpress_id': current_user.wordpress_id,
+        'curso_id': curso_id,
+        'asignatura_id': asignatura_id
     })
     # else:
 

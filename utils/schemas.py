@@ -6,7 +6,7 @@ from datetime import date
 
 class WordCreateRequest(BaseModel):
     word_en: str
-    word_es: str
+    word_es: Optional[str] = None  # Campo word_es ahora es opcional
     lang: str
     username: str
     firstname: str
