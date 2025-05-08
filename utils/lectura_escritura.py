@@ -12,18 +12,34 @@ from fastapi import HTTPException
 # --- Funciones auxiliares de verificación ---
 
 
-async def existe_word(db: AsyncSession, word: str, lang: str) -> dict:
+async def existe_word(db: AsyncSession, word: str, lang: str, temporal: bool = False) -> dict:
     """Verifica si una palabra ya existe en la base de datos (asíncrono)."""
     word = word.lower()
+
     palabra_encontrada = None
     if lang == "es":
-        result = await db.execute(select(Word).where(Word.word_es == word))
+        if temporal:
+            result = await db.execute(select(Word).where(Word.word_es == word, Word.campo_temporal == True))
+        else:
+            result = await db.execute(select(Word).where(Word.word_es == word, Word.campo_temporal == False))
         palabra_encontrada = result.scalar_one_or_none()
     elif lang == "en":
-        result = await db.execute(select(Word).where(Word.word_en == word))
+        if temporal:
+            result = await db.execute(select(Word).where(Word.word_en == word, Word.campo_temporal == True))
+        else:
+            result = await db.execute(select(Word).where(Word.word_en == word, Word.campo_temporal == False))
         palabra_encontrada = result.scalar_one_or_none()
+    else:
+        raise HTTPException(
+            status_code=400, detail="Error: No has seleccionado un idioma. Tienes que seleccionar: 'en' o 'es'.")
+
+    print(
+        f"Acabamos de Comprobar si la Palabra existe en la Base de Datos: {word}")
+    # print(f"{palabra_encontrada}")
 
     if palabra_encontrada:
+        print(
+            f"La palabra '{word}' ya existe en la base de datos (ID: {palabra_encontrada.id}).")
         return {
             "word_en": palabra_encontrada.word_en,
             "word_es": palabra_encontrada.word_es,
@@ -37,6 +53,7 @@ async def existe_word(db: AsyncSession, word: str, lang: str) -> dict:
             # "audios": [audio.ruta_archivo for audio in palabra_encontrada.audios],
         }
     else:
+        print(f"La palabra '{word}' NO existe en la base de datos.")
         return {
             "word_en": word,
             "lang": lang,
@@ -86,7 +103,8 @@ async def existe_word(db: AsyncSession, word: str, lang: str) -> dict:
 #     # return db.query(Word).filter((Word.word_es == word_es) | (Word.word_en == word_en)).first()
 
 
-async def guardar_word_db(db: AsyncSession, created_by: int, word_en: str, word_es: str, curso_id: Optional[int] = None, asignatura_id: Optional[int] = None) -> Word:
+async def guardar_word_db(db: AsyncSession, created_by: int, word_en: str, word_es: str, curso_id: Optional[int] = None, asignatura_id: Optional[int] = None, temporal: bool = False) -> Word:
+    # async def guardar_word_db(db: AsyncSession, created_by: int, word_en: str, curso_id: Optional[int] = None, asignatura_id: Optional[int] = None, temporal: bool = False) -> Word:
     """Guarda una nueva palabra en la base de datos."""
 
     # Ponemos en minúscula la palabra para evitar problemas de comparación y evitar duplicados
@@ -98,7 +116,8 @@ async def guardar_word_db(db: AsyncSession, created_by: int, word_en: str, word_
         word_es=word_es_lower,
         word_en=word_en_lower,
         curso_id=curso_id,
-        asignatura_id=asignatura_id
+        asignatura_id=asignatura_id,
+        campo_temporal=True
     )
     db.add(new_word)
     try:
@@ -206,7 +225,7 @@ def gestionar_guardado_word(
         # Aquí podrías agregar lógica para actualizar la información si es necesario
     else:
         new_word = guardar_word_db(
-            db, word_es, word_en, curso_id, asignatura_id)
+            db, word_es, word_en, curso_id, asignatura_id, False)
         print(
             f"Se ha guardado la nueva palabra '{word_es}' (ID: {new_word.id}).")
         guardar_definiciones_db(

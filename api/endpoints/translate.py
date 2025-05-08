@@ -118,6 +118,9 @@ async def translate_api(
     print("Palabra WORD:", word_existente_db["lang"])
 
     if word_existente_db["palabra_existente_db"] == True:
+        print("Palabra existente en DB:",
+              word_existente_db["palabra_existente_db"])
+        print(word_existente_db)
         respuesta = {
             # 'original_word': word,
             # 'original_language': lang,
@@ -162,6 +165,7 @@ async def translate_api(
         translated_word: str = ''
         spannish_word: str = ''
         english_word: str = ''
+        translated_word_arr = []
 
         if (lang == 'es' and idioma_correcto) or (lang == 'en' and not idioma_correcto):
             translated_word = await async_translate_word(word, source='es', target='en')
@@ -272,7 +276,7 @@ async def translate_api(
 
     # Archivo de Pronunciación
     pronunciation_file = await async_get_pronunciation(english_word, lang='en')
-    pronunciation_url = f'/audio/{os.path.basename(pronunciation_file)}' if pronunciation_file and os.path.exists(
+    pronunciation_url = f'/00_audios/temporales/{os.path.basename(pronunciation_file)}' if pronunciation_file and os.path.exists(
         pronunciation_file) else None
 
     return JSONResponse(content={
@@ -345,9 +349,14 @@ async def add_new_word(
     # {curso_id, asignatura_id} = get_curso_and_asignatura_id(year_nacimiento, 0, "Sciencies", db)
     # response_curso_asignatura = await get_curso_and_asignatura_id(
     #     year_nacimiento, 0, "Sciencies", db)
-    response_curso_asignatura = await get_curso_and_asignatura_id(
-        year_nacimiento, 0, word_data.asignatura, db)
-
+    try:
+        response_curso_asignatura = await get_curso_and_asignatura_id(
+            year_nacimiento, 0, word_data.asignatura, db)
+    except Exception as e:
+        print("Error al obtener el curso y asignatura:", e)
+        raise HTTPException(
+            status_code=500, detail="Error al obtener el curso y asignatura."
+        ) from e
     # curso_id = response_curso_asignatura.get("curso_id")
     # curso_id = response_curso_asignatura["curso_id"]
     # asignatura_id = response_curso_asignatura.get("asignatura_id")
@@ -356,18 +365,32 @@ async def add_new_word(
     asignatura_id = response_curso_asignatura["asignatura_id"]
 
     # Fíjate también en await
-    word_existente = await existe_word(db, word_data.word_en, word_data.lang)
+    print("Desde Función POST API Word: Vamos a comprobar si la palabra ya existe en la base de datos.")
+    try:
+        word_existente = await existe_word(db, word_data.word_en, word_data.lang)
+    except Exception as e:
+        print("Error al comprobar si la palabra existe en la base de datos:", e)
+        raise HTTPException(
+            status_code=500, detail="Error al comprobar si la palabra existe en la base de datos."
+        ) from e
 
     if word_existente['palabra_existente_db']:
         raise HTTPException(
-            status_code=400, detail="Esta palabra ya existe en la base de datos.")
+            status_code=400, detail="Esta palabra ya existe en la base de datos. Que no te enteras contreras.")
 
     print("Desde Función POST API Translate: Curso ID:", curso_id)
     print("Desde Función POST API Translate: Asignatura ID:", asignatura_id)
     # new_word = guardar_word_db(db, created_by=current_user.id, word_es=word_data.word_en.lower(
     # ), word_en=word_data.word_en.lower(), curso_id=word_data.curso_id, asignatura_id=word_data.asignatura_id)
-    new_word_sqlalchemy_obj = await guardar_word_db(db, created_by=current_user.id, word_es=word_data.word_es.lower(
-    ), word_en=word_data.word_en.lower(), curso_id=curso_id, asignatura_id=asignatura_id)
+    try:
+        new_word_sqlalchemy_obj = await guardar_word_db(db, created_by=current_user.id, word_es=word_data.word_es.lower(
+        ), word_en=word_data.word_en.lower(), curso_id=curso_id, asignatura_id=asignatura_id, temporal=True)
+    except Exception as e:
+        print("Error al guardar la palabra en la base de datos:", e)
+        raise HTTPException(
+            status_code=500, detail="Error al guardar la palabra en la base de datos."
+        ) from e
+
     # print(new_word_sqlalchemy_obj)
     response_data = WordResponse.model_validate(new_word_sqlalchemy_obj)
     print(response_data)

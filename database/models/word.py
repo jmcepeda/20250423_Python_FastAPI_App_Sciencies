@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from database.database import Base
 from datetime import datetime, timezone
 
@@ -18,6 +19,8 @@ class Word(Base):
     created_by = Column(Integer, ForeignKey("usuario.id"))
     # Nuevo campo: Fecha y hora de creación
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    # Corrección: usa 'nullable' en lugar de 'inullable'
+    campo_temporal = Column(Boolean, nullable=False)
 
     definitions_es = relationship("DefinitionsEs", back_populates="word")
     definitions_en = relationship("DefinitionsEn", back_populates="word")
@@ -27,6 +30,7 @@ class Word(Base):
     # audios = relationship("Audio", secondary="words_audios", back_populates="words")
     curso = relationship("Curso", back_populates="word")
     asignatura = relationship("Asignatura", back_populates="word")
+
     # resultados = relationship("ResultadoEjercicio", back_populates="words")
     # words_reto = relationship("WordReto", back_populates="words")
 
@@ -56,6 +60,7 @@ class DefinitionsEs(Base):
     # Nuevo campo: Fecha y hora de creación
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
     word = relationship("Word", back_populates="definitions_es")
+    campo_temporal = Column(Boolean, nullable=False)
 
 
 class DefinitionsEn(Base):
@@ -69,6 +74,7 @@ class DefinitionsEn(Base):
     # Nuevo campo: Fecha y hora de creación
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
     word = relationship("Word", back_populates="definitions_en")
+    campo_temporal = Column(Boolean, nullable=False)
 
 
 class TranslationEs(Base):
@@ -83,6 +89,7 @@ class TranslationEs(Base):
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
 
     word = relationship("Word", back_populates="translations_es")
+    campo_temporal = Column(Boolean, nullable=False)
 
 
 class TranslationEn(Base):
@@ -95,6 +102,7 @@ class TranslationEn(Base):
     created_by = Column(Integer, ForeignKey("usuario.id"))
     # Nuevo campo: Fecha y hora de creación
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    campo_temporal = Column(Boolean, nullable=False)
 
     word = relationship("Word", back_populates="translations_en")
 
@@ -110,6 +118,7 @@ class Imagen(Base):
     created_by = Column(Integer, ForeignKey("usuario.id"))
     # Nuevo campo: Fecha y hora de creación
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    campo_temporal = Column(Boolean, nullable=False)
 
     # words = relationship("Word", secondary="words_imagenes", back_populates="imagen")
 
@@ -135,6 +144,7 @@ class Audio(Base):
     created_by = Column(Integer, ForeignKey("usuario.id"))
     # Nuevo campo: Fecha y hora de creación
     created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    campo_temporal = Column(Boolean, nullable=False)
 
     # words = relationship("word", secondary="words_audios", back_populates="audios")
 

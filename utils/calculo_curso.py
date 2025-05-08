@@ -85,8 +85,24 @@ async def get_curso_and_asignatura_id(year_nacimiento: int, num_repetidos: int, 
 
     print(f"ID del curso: {curso_id}")
 
-    result_asignatura = await db.execute(select(Asignatura).where(Asignatura.nombre_asignatura == asignatura_name, Asignatura.curso_id == curso_id))
-    asignatura_id = result_asignatura.scalar_one_or_none().id
+    print(f"Nombre de la asignatura: {asignatura_name.lower()}")
+
+    result_asignatura = await db.execute(select(Asignatura).where(Asignatura.nombre_asignatura == asignatura_name.lower(), Asignatura.curso_id == curso_id))
+    resultado_asignatura = result_asignatura.scalar_one_or_none()
+
+    if resultado_asignatura is None:
+        # If no result is found, it's helpful to query all Asignatura records
+        # with the matching curso_id to see if there are any name discrepancies.
+        all_asignaturas_for_curso = await db.execute(select(Asignatura).where(Asignatura.curso_id == curso_id))
+        print(f"Todas las asignaturas para curso_id {curso_id}:")
+        for asignatura in all_asignaturas_for_curso.scalars().all():
+            print(
+                f"- Nombre: {asignatura.nombre_asignatura}, Curso ID: {asignatura.curso_id}")
+
+    print(f"Resultado de la consulta de asignatura:")
+    print(resultado_asignatura)
+
+    asignatura_id = resultado_asignatura.id
 
     print(
         f"Función get_curso_and_asignatura_id: ID de la asignatura: {asignatura_id}")
